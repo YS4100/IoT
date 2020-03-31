@@ -1,0 +1,47 @@
+#include "WiFi.h"
+
+// Wifi credentials
+const char *WIFI_SSID = "YOUR WIFI NETWORK NAME";
+const char *WIFI_PASSWORD = "WIFI PASSWORD";
+
+void connectToWiFi()
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  // Only try 15 times to connect to the WiFi
+  int retries = 0;
+  while (WiFi.status() != WL_CONNECTED && retries < 15){
+    delay(500);
+    Serial.print(".");
+    retries++;
+  }
+
+  // If we still couldn't connect to the WiFi, go to deep sleep for a minute and try again.
+  if(WiFi.status() != WL_CONNECTED){
+    esp_sleep_enable_timer_wakeup(1 * 60L * 1000000L);
+    esp_deep_sleep_start();
+  }
+}
+
+This particular function will try 15 times to connect and if it fails will make the ESP32 go into deep sleep mode for a minute. This is 
+to prevent the microcontroller from being stuck trying to connect to WiFi (and potentially draining the battery).
+Next, we have to register our device with AWS and create a certificate for it. After the certificate is created, we add them to the 
+arduino sketch. Then we connect to AWS via MQTT. By that we have an open connection with AWS ready to send and receive messages. We would
+need to construct a JSON document and publish it to the MQTT topic, and for that we use Arduino json library. Thus we will have created 
+all the functions we need to establish a connection with AWS, construct a JSON object and send it.
+We use the the following setup and loop functions:
+
+void setup() {
+  Serial.begin(9600);
+  connectToWiFi();
+  connectToAWS();
+}
+
+void loop() {
+  sendJsonToAWS();
+  client.loop();
+  delay(1000);
+}
+
+These are essential to keep the MQTT connection with AWS alive.
